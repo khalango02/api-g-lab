@@ -30,11 +30,4 @@ curl --location 'localhost:8080/admin/routes' \
 
 # Teste de API
 
-curl --location --request GET 'localhost:8080/minha-api' \
---header 'Content-Type: application/json' \
---data '{
-  "path": "/minha-api",
-  "method": "GET",
-  "target_url": "http://localhost:5000/endpoint-real",
-  "policy_id": 1
-}'
+curl --location 'localhost:8080/minha-api'
