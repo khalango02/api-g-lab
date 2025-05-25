@@ -2,8 +2,7 @@
 
 RUN
 
-python3 app.py
-
+docker-compose up -d --build
 
 ---------------
 
