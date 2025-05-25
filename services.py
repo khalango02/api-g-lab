@@ -1,45 +1,68 @@
-from db import get_connection
-from models import Policy, Route
+from db import get_db_connection
+import psycopg2
 
 def create_policy(name):
-    with get_connection() as conn:
-        cursor = conn.cursor()
-        cursor.execute('INSERT INTO policies (name) VALUES (?)', (name,))
-        return cursor.lastrowid
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                'INSERT INTO policies (name) VALUES (%s) RETURNING id',
+                (name,)
+            )
+            return cur.fetchone()[0]
 
-def list_policies():
-    with get_connection() as conn:
-        cursor = conn.execute('SELECT id, name FROM policies')
-        return [Policy(id=row[0], name=row[1]) for row in cursor.fetchall()]
+def get_policy_script_path(policy_id):
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute('SELECT script_path FROM policies WHERE id = %s', (policy_id,))
+            result = cur.fetchone()
+            return result[0] if result else None
 
 def create_route(path, method, target_url, policy_id=None):
-    with get_connection() as conn:
-        cursor = conn.cursor()
-        cursor.execute(
-            'INSERT INTO routes (path, method, target_url, policy_id) VALUES (?, ?, ?, ?)',
-            (path, method.upper(), target_url, policy_id)
-        )
-        return cursor.lastrowid
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                'INSERT INTO routes (path, method, target_url, policy_id) VALUES (%s, %s, %s, %s) RETURNING id',
+                (path, method.upper(), target_url, policy_id)
+            )
+            return cur.fetchone()[0]
 
 def list_routes():
-    with get_connection() as conn:
-        cursor = conn.execute('''
-            SELECT r.id, r.path, r.method, r.target_url, p.id, p.name
-            FROM routes r LEFT JOIN policies p ON r.policy_id = p.id
-        ''')
-        routes = []
-        for row in cursor.fetchall():
-            routes.append(Route(
-                id=row[0], path=row[1], method=row[2],
-                target_url=row[3], policy_id=row[4], policy_name=row[5]
-            ))
-        return routes
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute('SELECT id, path, method, target_url, policy_id FROM routes')
+            return [dict(zip(['id', 'path', 'method', 'target_url', 'policy_id'], row)) for row in cur.fetchall()]
 
-def get_route_by_path_and_method(path, method):
-    with get_connection() as conn:
-        cursor = conn.execute('''
-            SELECT r.target_url, p.name FROM routes r
-            LEFT JOIN policies p ON r.policy_id = p.id
-            WHERE r.path = ? AND r.method = ?
-        ''', (path, method.upper()))
-        return cursor.fetchone()
+def update_route(route_id, path, method, target_url, policy_id=None):
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                '''
+                UPDATE routes
+                SET path = %s, method = %s, target_url = %s, policy_id = %s
+                WHERE id = %s
+                ''',
+                (path, method.upper(), target_url, policy_id, route_id)
+            )
+
+def delete_route(route_id):
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute('DELETE FROM routes WHERE id = %s', (route_id,))
+
+def find_route(path, method):
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                'SELECT target_url, policy_id FROM routes WHERE path = %s AND method = %s',
+                (path, method)
+            )
+            return cur.fetchone()
+
+def find_policy_name(policy_id):
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                'SELECT name FROM policies WHERE id = %s',
+                (policy_id,)
+            )
+            return cur.fetchone()

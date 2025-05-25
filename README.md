@@ -21,13 +21,14 @@ curl --location 'localhost:8080/admin/policies' \
 curl --location 'localhost:8080/admin/routes' \
 --header 'Content-Type: application/json' \
 --data '{
-  "path": "/minha-api",
+  "path": "/minha-api2",
   "method": "GET",
-  "target_url": "http://localhost:5000/endpoint-real",
+  "target_url": "http://host.docker.internal:5001/endpoint-real",
   "policy_id": 1
 }'
 
 
 # Teste de API
 
-curl --location 'localhost:8080/minha-api'
+curl --location 'localhost:8080/minha-api2' \
+--header 'X-Api-Key: secret123'
